@@ -290,9 +290,15 @@ moduleTscnName :: FilePath -> T.Text -> Tscn -> [Char]
 moduleTscnName inDir tscnFilepath tscn =
   mangle $ takeBaseName $ T.unpack tscnFilepath
 
+createAndWriteFile :: FilePath -> T.Text -> IO ()
+createAndWriteFile path content = do
+  createDirectoryIfMissing True $ takeDirectory path
+
+  T.writeFile path content
+
 outputTscn :: [FilePath] -> FilePath -> FilePath -> Tscn -> M.Map T.Text Tscn -> M.Map T.Text Gdns -> IO ()
 outputTscn segmentsTscnName moduleName outDir tscn tscns gdnss = do
-  T.writeFile (normalise $ outDir </> "Project" </> "Scenes" </> joinPath segmentsTscnName </> moduleName <> ".hs") $
+  createAndWriteFile (normalise $ outDir </> "Project" </> "Scenes" </> joinPath segmentsTscnName </> moduleName <> ".hs") $
     T.unlines ([T.pack language, mkModule (intercalate "." (segmentsTscnName <> [moduleName]))]
                ++ map (\(name,node) -> mkSceneNode moduleName (T.unpack $ unName name)
                                             (case node ^. parent of
@@ -349,7 +355,7 @@ type Nodes = '[#{reqs}]
         one name = [i|OneSceneNode "#{name}" "#{name}"|]
 
 outputGdnss :: FilePath -> M.Map T.Text Gdns -> IO ()
-outputGdnss dir gdnss = T.writeFile (dir </> "Project" </> "Requirements.hs") $ mkRequirementsModule $ map snd $ M.toList gdnss
+outputGdnss dir gdnss = createAndWriteFile (dir </> "Project" </> "Requirements.hs") $ mkRequirementsModule $ map snd $ M.toList gdnss
 
 mkRequirement :: Gdns -> [T.Text]
 mkRequirement gdns = mapMaybe (\(n,i) ->
